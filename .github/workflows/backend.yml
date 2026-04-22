@@ -1,0 +1,146 @@
+name: Backend CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/dspace-backend
+  RESOURCE_GROUP: dspace-personal-rg
+  CONTAINER_ENV: dspace-env
+
+jobs:
+  # ─── BUILD & PUSH IMAGE ──────────────────────────────────────
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      image-tag: ${{ steps.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=sha,prefix=
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build & push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ─── DEPLOY DEV (nhánh develop) ──────────────────────────────
+  deploy-dev:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: development
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    steps:
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy PostgreSQL (chỉ lần đầu)
+        run: |
+          az containerapp create \
+            --name dspace-postgres-dev \
+            --resource-group $RESOURCE_GROUP \
+            --environment $CONTAINER_ENV \
+            --image postgres:15 \
+            --min-replicas 1 --max-replicas 1 \
+            --ingress internal --target-port 5432 \
+            --cpu 0.5 --memory 1Gi \
+            --env-vars POSTGRES_DB=dspace POSTGRES_USER=dspace POSTGRES_PASSWORD=dspacepass \
+          2>/dev/null || echo "PostgreSQL already exists"
+
+      - name: Deploy Solr (chỉ lần đầu)
+        run: |
+          az containerapp create \
+            --name dspace-solr-dev \
+            --resource-group $RESOURCE_GROUP \
+            --environment $CONTAINER_ENV \
+            --image 4science/dspace-cris-solr:dspace-cris-2024_02_x \
+            --min-replicas 0 --max-replicas 1 \
+            --ingress internal --target-port 8983 \
+            --cpu 0.5 --memory 1Gi \
+          2>/dev/null || echo "Solr already exists"
+
+      - name: Deploy Backend → dev
+        run: |
+          az containerapp create \
+            --name dspace-backend-dev \
+            --resource-group $RESOURCE_GROUP \
+            --environment $CONTAINER_ENV \
+            --image $IMAGE:${{ needs.build.outputs.image-tag }} \
+            --registry-server ghcr.io \
+            --registry-username ${{ github.actor }} \
+            --registry-password ${{ secrets.GITHUB_TOKEN }} \
+            --min-replicas 0 --max-replicas 1 \
+            --ingress external --target-port 8080 \
+            --cpu 2 --memory 4Gi \
+            --env-vars \
+              "db__P__url=jdbc:postgresql://dspace-postgres-dev:5432/dspace" \
+              "db__P__username=dspace" \
+              "db__P__password=dspacepass" \
+              "solr__P__server=http://dspace-solr-dev/solr" \
+          2>/dev/null || \
+          az containerapp update \
+            --name dspace-backend-dev \
+            --resource-group $RESOURCE_GROUP \
+            --image $IMAGE:${{ needs.build.outputs.image-tag }}
+
+      - name: Print URL
+        run: |
+          echo "Backend URL:"
+          az containerapp show \
+            --name dspace-backend-dev \
+            --resource-group $RESOURCE_GROUP \
+            --query "properties.configuration.ingress.fqdn" -o tsv
+
+  # ─── DEPLOY PRODUCTION (nhánh main) ──────────────────────────
+  deploy-prod:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: production
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy Backend → prod
+        run: |
+          az containerapp create \
+            --name dspace-backend-prod \
+            --resource-group $RESOURCE_GROUP \
+            --environment $CONTAINER_ENV \
+            --image $IMAGE:${{ needs.build.outputs.image-tag }} \
+            --registry-server ghcr.io \
+            --registry-username ${{ github.actor }} \
+            --registry-password ${{ secrets.GITHUB_TOKEN }} \
+            --min-replicas 0 --max-replicas 1 \
+            --ingress external --target-port 8080 \
+            --cpu 2 --memory 4Gi \
+          2>/dev/null || \
+          az containerapp update \
+            --name dspace-backend-prod \
+            --resource-group $RESOURCE_GROUP \
+            --image $IMAGE:${{ needs.build.outputs.image-tag }}
