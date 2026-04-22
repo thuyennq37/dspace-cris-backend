@@ -93,7 +93,6 @@ jobs:
   codecov:
     # Must run after 'tests' job above
     needs: tests
-    if: ${{ secrets.CODECOV_TOKEN != '' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -109,6 +108,7 @@ jobs:
       # Retry action: https://github.com/marketplace/actions/retry-action
       # Codecov action: https://github.com/codecov/codecov-action
       - name: Upload coverage to Codecov.io
+        if: ${{ secrets.CODECOV_TOKEN != '' }}
         uses: Wandalen/wretry.action@v1.3.0
         with:
           action: codecov/codecov-action@v4
@@ -120,3 +120,7 @@ jobs:
           attempt_limit: 5
           # Run again in 30 seconds
           attempt_delay: 30000
+
+      - name: Skip Codecov upload (token missing)
+        if: ${{ secrets.CODECOV_TOKEN == '' }}
+        run: echo "Skipping Codecov upload because CODECOV_TOKEN is not configured."
