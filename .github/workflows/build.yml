@@ -93,6 +93,7 @@ jobs:
   codecov:
     # Must run after 'tests' job above
     needs: tests
+    if: ${{ secrets.CODECOV_TOKEN != '' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
