@@ -1,0 +1,40 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!--
+    log4j2-console.xml
+
+    Simple log4j configuration file used during Ant build tasks.
+
+    Its goal is to simply output logs to the commandline / console.
+-->
+<Configuration strict='true'
+               xmlns='http://logging.apache.org/log4j/2.0/config'>
+    <Properties>
+        <!-- Default log file directory for DSpace. -->
+        <Property name='log.dir'>${log4j:configParentLocation}/../log</Property>
+    </Properties>
+
+    <Appenders>
+        <Appender name='A1'
+		  type='Console'>
+            <Layout type='PatternLayout'
+		    pattern='%d %-5p %c @ %m%n'/>
+        </Appender>
+        <Appender name='A2'
+                  type='File'
+                  fileName='${log.dir}/dspace-debug.log'>
+            <Layout type='PatternLayout'
+                    pattern='%d %-5p %c @ %m%n'/>
+        </Appender>
+    </Appenders>
+
+    <Loggers>
+        <Logger name='org.dspace' level='WARN' additivity='false'>
+            <AppenderRef ref='A1'/>
+            <AppenderRef ref='A2'/>
+        </Logger>
+        <Root level='WARN'>
+            <AppenderRef ref='A1'/>
+            <AppenderRef ref='A2'/>
+        </Root>
+    </Loggers>
+</Configuration>

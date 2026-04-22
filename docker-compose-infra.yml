@@ -1,0 +1,89 @@
+# Docker Compose for LOCAL DEVELOPMENT only
+# Starts only infrastructure services (PostgreSQL + Solr)
+# DSpace backend runs locally on your machine (not in Docker) for easy debugging
+#
+# Usage:
+#   docker compose -f docker-compose-infra.yml -p dcris-dev up -d
+#   docker compose -f docker-compose-infra.yml -p dcris-dev down
+
+networks:
+  dspacenet:
+    ipam:
+      config:
+        - subnet: 172.23.0.0/16
+
+services:
+  dspacedb:
+    container_name: dspacedb-dev
+    image: "docker.io/4science/dspace-cris-postgres-pgcrypto:dspace-cris-2024_02_x"
+    build:
+      context: ./dspace/src/main/docker/dspace-postgres-pgcrypto/
+      dockerfile: Dockerfile
+    environment:
+      PGDATA: /pgdata
+      POSTGRES_PASSWORD: dspace
+    networks:
+      dspacenet:
+    ports:
+      - published: 5432
+        target: 5432
+    stdin_open: true
+    tty: true
+    volumes:
+      - pgdata_dev:/pgdata
+
+  dspacesolr:
+    container_name: dspacesolr-dev
+    image: "docker.io/4science/dspace-cris-solr:dspace-cris-2024_02_x"
+    build:
+      context: .
+      dockerfile: ./dspace/src/main/docker/dspace-solr/Dockerfile
+      args:
+        SOLR_VERSION: "8.11.4"
+    networks:
+      dspacenet:
+    ports:
+      - published: 8983
+        target: 8983
+    stdin_open: true
+    tty: true
+    working_dir: /var/solr/data
+    volumes:
+      - solr_data_dev:/var/solr/data
+    entrypoint:
+      - /bin/bash
+      - '-c'
+      - |
+        init-var-solr
+        precreate-core authority /opt/solr/server/solr/configsets/authority
+        cp -r /opt/solr/server/solr/configsets/authority/* authority
+        precreate-core oai /opt/solr/server/solr/configsets/oai
+        cp -r /opt/solr/server/solr/configsets/oai/* oai
+        precreate-core search /opt/solr/server/solr/configsets/search
+        cp -r /opt/solr/server/solr/configsets/search/* search
+        precreate-core statistics /opt/solr/server/solr/configsets/statistics
+        cp -r /opt/solr/server/solr/configsets/statistics/* statistics
+        precreate-core qaevent /opt/solr/server/solr/configsets/qaevent
+        cp -r /opt/solr/server/solr/configsets/qaevent/* qaevent
+        precreate-core suggestion /opt/solr/server/solr/configsets/suggestion
+        cp -r /opt/solr/server/solr/configsets/suggestion/* suggestion
+        precreate-core dedup /opt/solr/server/solr/configsets/dedup
+        cp -r /opt/solr/server/solr/configsets/dedup/* dedup
+        precreate-core audit /opt/solr/server/solr/configsets/audit
+        cp -r /opt/solr/server/solr/configsets/audit/* audit
+        exec solr -f
+
+  grobid:
+    container_name: grobid-dev
+    image: "lfoppiano/grobid:0.8.1"
+    networks:
+      dspacenet:
+    ports:
+      - published: 8070
+        target: 8070
+    stdin_open: true
+    tty: true
+
+volumes:
+  pgdata_dev:
+  solr_data_dev:

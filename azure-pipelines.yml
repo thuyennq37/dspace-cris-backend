@@ -1,0 +1,170 @@
+# ============================================================
+# DSpace-CRIS Backend Pipeline
+# Repo: dspace-java
+# ============================================================
+# TRƯỚC KHI CHẠY — cấu hình trong Azure DevOps:
+#
+#   Variable Group "dspace-backend-vars" (Library → Variable groups):
+#     - acrName                 : vd: mycompanyacr.azurecr.io
+#     - acrServiceConnection    : tên Service Connection tới ACR
+#     - aksDevServiceConnection : tên Service Connection tới AKS dev
+#     - aksProdServiceConnection: tên Service Connection tới AKS prod
+#
+#   Environments (Pipelines → Environments):
+#     - development : không cần approval
+#     - production  : bật manual approval gate
+# ============================================================
+
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+  paths:
+    exclude:
+      - '**/*.md'
+
+pr:
+  branches:
+    include:
+      - main
+      - develop
+
+variables:
+  - group: dspace-backend-vars
+  - name: BACKEND_IMAGE
+    value: 'dspace-backend'
+  - name: IMAGE_TAG
+    value: '$(Build.BuildId)'
+
+# ============================================================
+# STAGE 1: BUILD & PUSH
+# ============================================================
+stages:
+  - stage: Build
+    displayName: 'Build & Push'
+    jobs:
+      - job: BuildBackend
+        displayName: 'Maven Build + Docker Push'
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - checkout: self
+            fetchDepth: 0
+
+          - task: Cache@2
+            displayName: 'Cache Maven repository'
+            inputs:
+              key: 'maven | "$(Agent.OS)" | **/pom.xml'
+              restoreKeys: |
+                maven | "$(Agent.OS)"
+              path: '$(HOME)/.m2/repository'
+
+          - task: JavaToolInstaller@0
+            displayName: 'Cài đặt JDK 17'
+            inputs:
+              versionSpec: '17'
+              jdkArchitectureOption: 'x64'
+              jdkSourceOption: 'PreInstalled'
+
+          - task: Maven@4
+            displayName: 'Maven package'
+            inputs:
+              mavenPomFile: 'pom.xml'
+              goals: 'package'
+              options: >-
+                -P-assembly
+                -P-test-environment
+                -Denforcer.skip=true
+                -Dcheckstyle.skip=true
+                -Dlicense.skip=true
+                -Dxml.skip=true
+                -DskipTests=true
+              javaHomeOption: 'JDKVersion'
+              jdkVersionOption: '1.17'
+              publishJUnitResults: false
+              mavenOptions: '-Xmx2048m'
+
+          - task: Docker@2
+            displayName: 'Docker build'
+            inputs:
+              command: build
+              containerRegistry: '$(acrServiceConnection)'
+              repository: '$(BACKEND_IMAGE)'
+              dockerfile: 'Dockerfile.build'
+              buildContext: '.'
+              tags: |
+                $(IMAGE_TAG)
+                latest
+
+          - task: Docker@2
+            displayName: 'Docker push'
+            inputs:
+              command: push
+              containerRegistry: '$(acrServiceConnection)'
+              repository: '$(BACKEND_IMAGE)'
+              tags: |
+                $(IMAGE_TAG)
+                latest
+
+  # ============================================================
+  # STAGE 2: DEPLOY TO DEVELOPMENT  (nhánh develop)
+  # ============================================================
+  - stage: DeployDev
+    displayName: 'Deploy → Development'
+    dependsOn: Build
+    condition: >
+      and(
+        succeeded(),
+        eq(variables['Build.SourceBranch'], 'refs/heads/develop')
+      )
+    jobs:
+      - deployment: DeployDev
+        displayName: 'Deploy to Dev (AKS)'
+        environment: 'development'
+        pool:
+          vmImage: 'ubuntu-latest'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: KubernetesManifest@1
+                  displayName: 'Deploy → dspace-dev'
+                  inputs:
+                    action: deploy
+                    connectionType: 'kubernetesServiceConnection'
+                    kubernetesServiceConnection: '$(aksDevServiceConnection)'
+                    namespace: 'dspace-dev'
+                    manifests: 'k8s/dev/backend.yaml'
+                    containers: '$(acrName)/$(BACKEND_IMAGE):$(IMAGE_TAG)'
+
+  # ============================================================
+  # STAGE 3: DEPLOY TO PRODUCTION  (nhánh main)
+  # ============================================================
+  - stage: DeployProd
+    displayName: 'Deploy → Production'
+    dependsOn: Build
+    condition: >
+      and(
+        succeeded(),
+        eq(variables['Build.SourceBranch'], 'refs/heads/main')
+      )
+    jobs:
+      - deployment: DeployProd
+        displayName: 'Deploy to Prod (AKS)'
+        environment: 'production'
+        pool:
+          vmImage: 'ubuntu-latest'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: KubernetesManifest@1
+                  displayName: 'Deploy → dspace-prod'
+                  inputs:
+                    action: deploy
+                    connectionType: 'kubernetesServiceConnection'
+                    kubernetesServiceConnection: '$(aksProdServiceConnection)'
+                    namespace: 'dspace-prod'
+                    manifests: 'k8s/prod/backend.yaml'
+                    containers: '$(acrName)/$(BACKEND_IMAGE):$(IMAGE_TAG)'

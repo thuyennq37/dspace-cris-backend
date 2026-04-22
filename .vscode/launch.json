@@ -1,0 +1,29 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "DSpace CRIS - Launch (ServerBootApplication)",
+            "request": "launch",
+            "mainClass": "org.dspace.app.ServerBootApplication",
+            "projectName": "server-boot",
+            "args": "",
+            "vmArgs": [
+                "--add-opens=java.base/java.lang=ALL-UNNAMED",
+                "--add-opens=java.base/java.util=ALL-UNNAMED",
+                "--add-opens=java.base/java.io=ALL-UNNAMED",
+                "-Ddspace.dir=C:/Workspace/repo/vin-uni/dspace-cris/dspace-java/dspace"
+            ],
+            "env": {
+                "JAVA_TOOL_OPTIONS": ""
+            }
+        },
+        {
+            "type": "java",
+            "name": "DSpace CRIS - Attach (Remote Debug Port 5005)",
+            "request": "attach",
+            "hostName": "localhost",
+            "port": 5005
+        }
+    ]
+}

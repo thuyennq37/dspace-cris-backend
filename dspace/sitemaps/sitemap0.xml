@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>http://localhost:4000/communities/20000000-0000-0000-0000-000000000003</loc></url>
+<url><loc>http://localhost:4000/communities/20000000-0000-0000-0000-000000000002</loc></url>
+<url><loc>http://localhost:4000/communities/20000000-0000-0000-0000-000000000004</loc></url>
+<url><loc>http://localhost:4000/communities/b897a519-0491-4c34-a69f-3e97e11ea677</loc></url>
+<url><loc>http://localhost:4000/communities/20000000-0000-0000-0000-000000000001</loc></url>
+<url><loc>http://localhost:4000/communities/20000000-0000-0000-0000-000000000005</loc></url>
+<url><loc>http://localhost:4000/communities/c0551562-f942-44cf-9c26-3110672ee2d5</loc></url>
+<url><loc>http://localhost:4000/collections/30000000-0000-0000-0000-000000000001</loc></url>
+<url><loc>http://localhost:4000/collections/30000000-0000-0000-0000-000000000002</loc></url>
+<url><loc>http://localhost:4000/collections/30000000-0000-0000-0000-000000000004</loc></url>
+<url><loc>http://localhost:4000/collections/30000000-0000-0000-0000-000000000007</loc></url>
+<url><loc>http://localhost:4000/collections/30000000-0000-0000-0000-000000000006</loc></url>
+<url><loc>http://localhost:4000/collections/30000000-0000-0000-0000-000000000005</loc></url>
+<url><loc>http://localhost:4000/collections/30000000-0000-0000-0000-000000000003</loc></url>
+<url><loc>http://localhost:4000/collections/452d74ff-1f02-4197-ada7-dcd9e308562d</loc></url>
+<url><loc>http://localhost:4000/collections/30000000-0000-0000-0000-000000000008</loc></url>
+<url><loc>http://localhost:4000/entities/person/40000000-0000-0000-0000-000000000001</loc></url>
+<url><loc>http://localhost:4000/entities/person/40000000-0000-0000-0000-000000000002</loc></url>
+<url><loc>http://localhost:4000/entities/person/40000000-0000-0000-0000-000000000003</loc></url>
+<url><loc>http://localhost:4000/entities/publication/40000000-0000-0000-0000-000000000010</loc></url>
+<url><loc>http://localhost:4000/entities/publication/40000000-0000-0000-0000-000000000011</loc></url>
+<url><loc>http://localhost:4000/entities/publication/40000000-0000-0000-0000-000000000012</loc></url>
+<url><loc>http://localhost:4000/entities/publication/40000000-0000-0000-0000-000000000013</loc></url>
+<url><loc>http://localhost:4000/entities/publication/40000000-0000-0000-0000-000000000014</loc></url>
+<url><loc>http://localhost:4000/entities/publication/40000000-0000-0000-0000-000000000015</loc></url>
+<url><loc>http://localhost:4000/entities/publication/40000000-0000-0000-0000-000000000016</loc></url>
+<url><loc>http://localhost:4000/entities/project/40000000-0000-0000-0000-000000000020</loc></url>
+<url><loc>http://localhost:4000/entities/project/40000000-0000-0000-0000-000000000021</loc></url>
+<url><loc>http://localhost:4000/entities/orgunit/40000000-0000-0000-0000-000000000030</loc></url>
+<url><loc>http://localhost:4000/entities/orgunit/40000000-0000-0000-0000-000000000031</loc></url>
+<url><loc>http://localhost:4000/entities/orgunit/40000000-0000-0000-0000-000000000032</loc></url>
+</urlset>
